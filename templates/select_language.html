@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Select Language - YouTube Downloader{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        // Immediately disable the button and show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+        
+        // Ensure at least one language is selected
+        const selectedLang = document.querySelector('input[name="format_selection"]:checked');
+        if (!selectedLang) {
+            e.preventDefault();
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-download me-2"></i>Download';
+            alert('Please select a language');
+            return false;
+        }
+        
+        // Form is valid, continue submission
+        return true;
+    });
+    
+    // Handle radio button clicks for better UX
+    const radioButtons = document.querySelectorAll('input[name="format_selection"]');
+    radioButtons.forEach(radio => {
+        // Make the entire language block clickable
+        const langBlock = radio.closest('.form-check');
+        langBlock.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'INPUT') {
+                radio.checked = true;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-header">
+                <h3 class="mb-0">
+                    <i class="fas fa-closed-captioning me-2"></i>Select Subtitle Language
+                </h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('submit_format') }}">
+                    {{ form.csrf_token }}
+                    
+                    <div class="mb-4">
+                        <p class="lead">Choose the subtitle language you want to download:</p>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Note:</strong> The transcript will be downloaded as a clean text file (.txt) without timestamps or formatting codes.
+                        </div>
+                    </div>
+                    
+                    <div class="language-selection">
+                        {% for lang_code, subtitle_info in subtitles.items() %}
+                            <div class="form-check mb-3 p-3 border rounded">
+                                <input class="form-check-input" type="radio" 
+                                       name="format_selection" 
+                                       id="lang_{{ lang_code }}" 
+                                       value="{{ lang_code }}"
+                                       {% if loop.first %}checked{% endif %}>
+                                <label class="form-check-label d-flex justify-content-between align-items-center w-100" 
+                                       for="lang_{{ lang_code }}">
+                                    <div>
+                                        <strong>{{ subtitle_info.name }}</strong>
+                                        <span class="text-muted">[{{ lang_code }}]</span>
+                                    </div>
+                                    <div>
+                                        {% if subtitle_info.type == 'auto-generated' %}
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-robot me-1"></i>Auto-generated
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-user me-1"></i>Manual
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="alert alert-warning mt-4">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Tip:</strong> Manual subtitles are usually more accurate than auto-generated ones. The downloaded file will contain only the spoken text, making it perfect for reading or text processing.
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="submit-btn">
+                            <i class="fas fa-download me-2"></i>Download
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.language-selection .form-check:hover {
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+
+.language-selection .form-check-input:checked ~ .form-check-label {
+    font-weight: 600;
+}
+</style>
+{% endblock %}

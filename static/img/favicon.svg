@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="16" cy="16" r="15" fill="#FF0000" stroke="#CC0000" stroke-width="1"/>
+  
+  <!-- Download Arrow -->
+  <g transform="translate(16, 16)">
+    <!-- Arrow Shaft -->
+    <rect x="-2" y="-8" width="4" height="10" fill="white"/>
+    <!-- Arrow Head -->
+    <path d="M -6 2 L 0 8 L 6 2 L 3 2 L 3 -2 L -3 -2 L -3 2 Z" fill="white"/>
+  </g>
+  
+  <!-- Bottom Line (representing downloaded content) -->
+  <rect x="8" y="24" width="16" height="2" rx="1" fill="white"/>
+</svg>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg">
+  <!-- YouTube-style play button background -->
+  <rect x="0" y="5" width="30" height="30" rx="6" fill="#FF0000"/>
+  
+  <!-- Download symbol inside -->
+  <g transform="translate(15, 20)">
+    <!-- Arrow -->
+    <rect x="-2" y="-8" width="4" height="10" fill="white"/>
+    <path d="M -5 2 L 0 7 L 5 2 L 3 2 L 3 -2 L -3 -2 L -3 2 Z" fill="white"/>
+    <!-- Bottom line -->
+    <rect x="-7" y="8" width="14" height="2" fill="white"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="40" y="27" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#FF0000">
+    YouTube
+  </text>
+  <text x="110" y="27" font-family="Arial, sans-serif" font-size="20" font-weight="normal" fill="#282828">
+    DL
+  </text>
+</svg>

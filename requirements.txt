@@ -1,0 +1,14 @@
+Flask==2.3.3
+Flask-WTF==1.2.1
+Flask-SocketIO==5.3.6
+Flask-Babel==3.1.0
+yt-dlp==2023.11.16
+Werkzeug==2.3.7
+python-socketio==5.10.0
+python-engineio==4.8.0
+eventlet==0.34.2
+WTForms==3.1.1
+gunicorn==21.2.0
+pytest==7.4.3
+flake8==6.1.0
+mypy==1.7.0

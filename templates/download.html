@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Downloading - YouTube Downloader{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-header">
+                <h3 class="mb-0">
+                    <i class="fas fa-download me-2"></i>
+                    {% if is_batch %}Batch Download{% else %}Download{% endif %} Progress
+                </h3>
+            </div>
+            <div class="card-body">
+                <div id="download-status">
+                    <div class="text-center mb-4">
+                        <img src="{{ url_for('static', filename='img/loading-icon.svg') }}" alt="Loading" width="100" height="100" class="mb-3">
+                        <h5>Initializing download...</h5>
+                    </div>
+                    
+                    {% if is_batch %}
+                        <div class="mb-4">
+                            <p class="text-muted">Processing {{ url_count }} URLs</p>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="progress mb-4" style="height: 30px;">
+                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                    
+                    <div id="status-message" class="text-center text-muted mb-3">
+                        Preparing download...
+                    </div>
+                    
+                    <div id="download-details" class="mt-4" style="display: none;">
+                        <h6>Download Details:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Type:</strong> {{ download_type|title }}</li>
+                            {% if selected_format %}
+                                <li><strong>Format:</strong> {{ selected_format }}</li>
+                            {% endif %}
+                            {% if selected_language %}
+                                <li><strong>Language:</strong> {{ selected_language }}</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    
+                    <div id="error-message" class="alert alert-danger d-none mt-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span id="error-text"></span>
+                    </div>
+                </div>
+                
+                <div id="download-complete" class="text-center d-none">
+                    <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                    <h4>Download Complete!</h4>
+                    <p class="text-muted">Your files have been downloaded successfully.</p>
+                    <p class="text-muted small">Downloaded to: <strong id="download-location">{{ session.get('download_dir', config.DOWNLOAD_FOLDER) }}</strong></p>
+                    <div id="file-list" class="mt-4"></div>
+                    <div class="mt-4">
+                        <button class="btn btn-success me-2" id="open-folder-btn">
+                            <i class="fas fa-folder-open me-2"></i>Open Download Folder
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <i class="fas fa-home me-2"></i>Download More
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const socket = io();
+    const downloadId = "{{ download_id }}";
+    const isCompleted = false;
+    
+    // Join the download room
+    socket.emit('join', {room: downloadId});
+    
+    // Start the download
+    startDownload();
+    
+    // Listen for progress updates
+    socket.on('download_progress', function(data) {
+        updateProgress(data);
+    });
+    
+    // Listen for batch progress updates
+    socket.on('batch_progress', function(data) {
+        updateBatchProgress(data);
+    });
+    
+    // Listen for download completion
+    socket.on('download_complete', function(data) {
+        handleCompletion(data);
+    });
+    
+    // Listen for errors
+    socket.on('download_error', function(data) {
+        handleError(data);
+    });
+    
+    async function startDownload() {
+        try {
+            const response = await fetch('/start_download', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                // If download completed immediately (for small files)
+                if (data.files && data.files.length > 0) {
+                    handleCompletion({files: data.files});
+                }
+            } else {
+                handleError({message: data.message});
+            }
+        } catch (error) {
+            handleError({message: 'Failed to start download: ' + error.message});
+        }
+    }
+    
+    function updateProgress(data) {
+        const progressBar = document.getElementById('progress-bar');
+        const statusMessage = document.getElementById('status-message');
+        const downloadDetails = document.getElementById('download-details');
+        
+        if (data.percent !== undefined) {
+            progressBar.style.width = data.percent + '%';
+            progressBar.textContent = Math.round(data.percent) + '%';
+        }
+        
+        if (data.status === 'finished') {
+            statusMessage.textContent = 'Processing file...';
+            // File is finished, but we need to wait for server response
+        } else if (data.speed) {
+            statusMessage.textContent = `Downloading: ${data.speed} - ETA: ${data.eta || 'calculating...'}`;
+        }
+        
+        if (data.filename) {
+            downloadDetails.style.display = 'block';
+        }
+    }
+    
+    function updateBatchProgress(data) {
+        const statusMessage = document.getElementById('status-message');
+        
+        if (data.status === 'processing') {
+            statusMessage.textContent = `Processing ${data.current} of ${data.total}: ${data.url}`;
+        } else if (data.status === 'success') {
+            statusMessage.textContent = `Completed ${data.current} of ${data.total}`;
+        } else if (data.status === 'error') {
+            statusMessage.textContent = `Error on ${data.current} of ${data.total}: ${data.error}`;
+        }
+    }
+    
+    function handleCompletion(data) {
+        const downloadStatus = document.getElementById('download-status');
+        const downloadComplete = document.getElementById('download-complete');
+        const fileList = document.getElementById('file-list');
+        
+        downloadStatus.classList.add('d-none');
+        downloadComplete.classList.remove('d-none');
+        
+        if (data.files && data.files.length > 0) {
+            fileList.innerHTML = '<h6 class="mb-3">Downloaded Files:</h6>';
+            const listGroup = document.createElement('div');
+            listGroup.className = 'list-group';
+            
+            data.files.forEach(file => {
+                            const item = document.createElement('a');
+                            item.href = `/download_file/${encodeURIComponent(file)}`;
+                            item.className = 'list-group-item list-group-item-action';
+                            
+                            let icon = 'fa-file';
+                            let iconColor = 'text-secondary';
+                            if (file.endsWith('.txt')) {
+                                icon = 'fa-file-alt';
+                                iconColor = 'text-info';
+                            } else if (file.endsWith('.mp3')) {
+                                icon = 'fa-music';
+                                iconColor = 'text-success';
+                            } else if (file.endsWith('.mp4')) {
+                                icon = 'fa-video';
+                                iconColor = 'text-primary';
+                            }
+                            
+                            item.innerHTML = `
+                                <i class="fas ${icon} me-2 ${iconColor}"></i>
+                                ${file}
+                                <i class="fas fa-download float-end"></i>
+                            `;
+                listGroup.appendChild(item);
+            });
+            
+            fileList.appendChild(listGroup);
+        }
+        
+        // Auto-open download folder after completion
+        // Check if user has disabled auto-open in settings
+        const autoOpenEnabled = localStorage.getItem('autoOpenDownloads') !== 'false';
+        if (autoOpenEnabled && data.autoOpen !== false) {
+            setTimeout(() => {
+                openDownloadFolder();
+            }, 1000);
+        }
+    }
+    
+    // Open download folder function
+    window.openDownloadFolder = async function() {
+        try {
+            const btn = document.getElementById('open-folder-btn');
+            if (btn) {
+                // Show loading state
+                const originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Opening...';
+                
+                // Get download settings from session (passed from template)
+                const downloadDir = '{{ session.get("download_dir", "") }}';
+                const useSystemDir = '{{ session.get("use_system_dir", "system") }}';
+                
+                const requestData = {
+                    directory_type: useSystemDir,
+                    custom_directory: downloadDir
+                };
+                
+                const response = await fetch('/open_download_folder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const data = await response.json();
+                
+                btn.disabled = false;
+                
+                if (data.status === 'success') {
+                    // Show success briefly
+                    btn.innerHTML = '<i class="fas fa-check me-2"></i>Opened!';
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                    }, 2000);
+                } else if (data.status === 'warning') {
+                    // Show warning for remote access
+                    btn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Local only';
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                        alert(data.message);
+                    }, 1000);
+                } else {
+                    // Show error
+                    btn.innerHTML = '<i class="fas fa-times me-2"></i>Failed';
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                        alert('Could not open download folder: ' + data.message);
+                    }, 1000);
+                }
+            }
+        } catch (error) {
+            console.error('Error opening download folder:', error);
+            const btn = document.getElementById('open-folder-btn');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-folder-open me-2"></i>Open Download Folder';
+                alert('Error: ' + error.message);
+            }
+        }
+    }
+    
+    function handleError(data) {
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        const progressBar = document.getElementById('progress-bar');
+        
+        progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.add('bg-danger');
+        
+        errorMessage.classList.remove('d-none');
+        errorText.textContent = data.message || 'An unknown error occurred';
+    }
+    
+    // Add click handler for open folder button
+    document.addEventListener('click', function(e) {
+        if (e.target && (e.target.id === 'open-folder-btn' || e.target.closest('#open-folder-btn'))) {
+            e.preventDefault();
+            openDownloadFolder();
+        }
+    });
+});
+</script>
+{% endblock %}

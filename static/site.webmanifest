@@ -1,0 +1,35 @@
+{
+    "name": "YouTube Downloader",
+    "short_name": "YT Downloader",
+    "description": "Download videos, audio, and transcripts from YouTube",
+    "start_url": "/",
+    "display": "standalone",
+    "theme_color": "#FF0000",
+    "background_color": "#FFFFFF",
+    "icons": [
+        {
+            "src": "/static/img/favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/static/img/apple-touch-icon.svg",
+            "sizes": "180x180",
+            "type": "image/svg+xml"
+        }
+    ],
+    "categories": ["productivity", "utilities"],
+    "lang": "en",
+    "dir": "ltr",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "screenshots": [
+        {
+            "src": "/static/img/screenshot.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "label": "YouTube Downloader Interface"
+        }
+    ]
+}

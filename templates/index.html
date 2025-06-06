@@ -1,0 +1,722 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('app_name') }} - {{ _('about_desc') }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <!-- Hero Section -->
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold">
+                <i class="fab fa-youtube text-danger"></i> {{ _('app_name') }}
+            </h1>
+            <p class="lead text-muted">{{ _('about_desc') }}</p>
+        </div>
+
+        <!-- Disclaimer Notice -->
+        <div class="alert alert-warning border-warning mb-4" role="alert" id="disclaimer-notice">
+            <h5 class="alert-heading">
+                <i class="fas fa-exclamation-triangle me-2"></i>{{ _('disclaimer_title') }}
+            </h5>
+            <p class="mb-2">
+                {{ _('disclaimer_text') }}
+                <strong>{{ _('no_support') }}</strong>
+            </p>
+            <p class="mb-3 small">
+                {{ _('disclaimer_responsibility') }}
+                {{ _('disclaimer_license') }} <a href="{{ url_for('serve_license') }}" target="_blank" class="alert-link">{{ _('license_terms') }}</a>.
+            </p>
+            <div class="text-end">
+                <button type="button" class="btn btn-warning btn-sm" onclick="acceptDisclaimer()">
+                    <i class="fas fa-check me-1"></i>{{ _('understood') }}
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Card -->
+        <div class="card shadow">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="downloadTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="single-tab" data-bs-toggle="tab" data-bs-target="#single" type="button" role="tab">
+                            <i class="fas fa-download me-2"></i>{{ _('single_url') }}
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="batch-tab" data-bs-toggle="tab" data-bs-target="#batch" type="button" role="tab">
+                            <i class="fas fa-list me-2"></i>{{ _('batch_download') }}
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                            <i class="fas fa-cog me-2"></i>{{ _('settings') }}
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card-body">
+                <div class="tab-content" id="downloadTabsContent">
+                    <!-- Single URL Tab -->
+                    <div class="tab-pane fade show active" id="single" role="tabpanel">
+                        <form method="POST" action="{{ url_for('process_url') }}" id="singleDownloadForm">
+                            {{ single_form.csrf_token }}
+                            
+                            <div class="mb-4">
+                                <label for="{{ single_form.url.id }}" class="form-label">
+                                    <i class="fab fa-youtube text-danger me-2"></i>{{ _('youtube_url') }}
+                                </label>
+                                {{ single_form.url(class="form-control", placeholder=_("youtube_url_placeholder")) }}
+                                {% if single_form.url.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in single_form.url.errors %}
+                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>{{ _('enter_valid_url') }}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label d-block">
+                                    <i class="fas fa-file-download me-2"></i>{{ _('download_type') }}
+                                </label>
+                                <div class="row g-3">
+                                    {% for option in single_form.download_type %}
+                                        <div class="col-md-4">
+                                            <div class="form-check h-100">
+                                                {{ option(class="form-check-input") }}
+                                                <label class="form-check-label w-100" for="{{ option.id }}">
+                                                    {% if option.data == 'video' %}
+                                                        <i class="fas fa-video me-2 text-primary"></i>
+                                                        <strong>{{ _('video') }}</strong>
+                                                        <small class="d-block text-muted">MP4 format</small>
+                                                    {% elif option.data == 'audio' %}
+                                                        <i class="fas fa-music me-2 text-success"></i>
+                                                        <strong>{{ _('audio') }}</strong>
+                                                        <small class="d-block text-muted">MP3 format</small>
+                                                    {% elif option.data == 'transcript' %}
+                                                    <i class="fas fa-closed-captioning me-2 text-info"></i>
+                                                    <strong>{{ _('transcript') }}</strong>
+                                                    <small class="d-block text-muted">{{ _('clean_text') }}</small>
+                                                    {% endif %}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <!-- Hidden fields for directory settings -->
+                            {{ single_form.use_system_dir(type="hidden", id="single_use_system_dir") }}
+                            {{ single_form.download_dir(type="hidden", id="single_download_dir") }}
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg" id="single-submit-btn">
+                                    <i class="fas fa-arrow-right me-2"></i>{{ _('continue') }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Batch Download Tab -->
+                    <div class="tab-pane fade" id="batch" role="tabpanel">
+                        <form method="POST" action="{{ url_for('process_batch') }}" id="batchDownloadForm">
+                            {{ batch_form.csrf_token }}
+                            
+                            <div class="mb-4">
+                                <label for="{{ batch_form.urls.id }}" class="form-label">
+                                    <i class="fas fa-list text-primary me-2"></i>{{ _('youtube_urls_multiline') }}
+                                </label>
+                                {{ batch_form.urls(class="form-control", rows=6, placeholder="https://www.youtube.com/watch?v=...\nhttps://www.youtube.com/watch?v=...\nhttps://www.youtube.com/watch?v=...") }}
+                                {% if batch_form.urls.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in batch_form.urls.errors %}
+                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>{{ _('enter_multiple_urls') }}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label d-block">
+                                    <i class="fas fa-file-download me-2"></i>{{ _('download_type') }}
+                                </label>
+                                <div class="row g-3">
+                                    {% for option in batch_form.download_type %}
+                                        <div class="col-md-4">
+                                            <div class="form-check h-100">
+                                                {{ option(class="form-check-input") }}
+                                                <label class="form-check-label w-100" for="{{ option.id }}">
+                                                    {% if option.data == 'video' %}
+                                                        <i class="fas fa-video me-2 text-primary"></i>
+                                                        <strong>{{ _('video') }}</strong>
+                                                        <small class="d-block text-muted">MP4 format</small>
+                                                    {% elif option.data == 'audio' %}
+                                                        <i class="fas fa-music me-2 text-success"></i>
+                                                        <strong>{{ _('audio') }}</strong>
+                                                        <small class="d-block text-muted">MP3 format</small>
+                                                    {% elif option.data == 'transcript' %}
+                                                    <i class="fas fa-closed-captioning me-2 text-info"></i>
+                                                    <strong>{{ _('transcript') }}</strong>
+                                                    <small class="d-block text-muted">{{ _('clean_text') }}</small>
+                                                    {% endif %}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <!-- Hidden fields for directory settings -->
+                            {{ batch_form.use_system_dir(type="hidden", id="batch_use_system_dir") }}
+                            {{ batch_form.download_dir(type="hidden", id="batch_download_dir") }}
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg" id="batch-submit-btn">
+                                    <i class="fas fa-arrow-right me-2"></i>{{ _('continue') }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Settings Tab -->
+                    <div class="tab-pane fade" id="settings" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="mb-0">
+                                <i class="fas fa-folder me-2"></i>{{ _('download_directory_settings') }}
+                            </h4>
+                            <button type="button" class="btn btn-outline-primary" onclick="openCurrentDownloadFolder()" id="open-folder-button">
+                                <i class="fas fa-external-link-alt me-2"></i><span id="open-folder-text">{{ _('open_current_folder') }}</span>
+                            </button>
+                        </div>
+                        
+                        <div class="directory-selector">
+                            <div class="mb-3">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="radio" name="directory_type" id="use_system" value="system" checked>
+                                    <label class="form-check-label" for="use_system">
+                                        <i class="fas fa-download me-2"></i>
+                                        <strong>{{ _('use_system_downloads') }}</strong>
+                                        <div class="directory-path mt-2">
+                                            <i class="fas fa-folder-open me-2"></i>
+                                            <span id="system_dir_path">{{ config.DEFAULT_SYSTEM_DOWNLOAD_FOLDER }}</span>
+                                        </div>
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="directory_type" id="use_custom" value="custom">
+                                    <label class="form-check-label" for="use_custom">
+                                        <i class="fas fa-folder-plus me-2"></i>
+                                        <strong>{{ _('use_custom_directory') }}</strong>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div id="custom_directory_section" style="display: none;" class="mt-3">
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="custom_dir_input" placeholder="Enter directory path or browse...">
+                                    <button class="btn btn-outline-secondary" type="button" id="browse_btn" data-bs-toggle="modal" data-bs-target="#directoryBrowserModal">
+                                        <i class="fas fa-folder-open me-2"></i>{{ _('browse') }}
+                                    </button>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <label class="form-label">{{ _('quick_access') }}</label>
+                                    <div class="row g-2" id="quick_access_dirs">
+                                        <!-- Quick access directories will be populated by JavaScript -->
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <button type="button" class="btn btn-success" id="save_settings_btn">
+                                    <i class="fas fa-save me-2"></i>{{ _('save_settings') }}
+                                </button>
+                                <span class="ms-3 text-success" id="settings_saved_msg" style="display: none;">
+                                    <i class="fas fa-check-circle me-1"></i>{{ _('settings_saved') }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <h5 class="mb-3">
+                            <i class="fas fa-cog me-2"></i>{{ _('download_preferences') }}
+                        </h5>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="auto_open_downloads" checked>
+                            <label class="form-check-label" for="auto_open_downloads">
+                                <strong>{{ _('auto_open_downloads') }}</strong>
+                                <br>
+                                <small class="text-muted">{{ _('auto_open_description') }}</small>
+                            </label>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <h5 class="mb-3">
+                            <i class="fas fa-info-circle me-2"></i>{{ _('about_directory_selection') }}
+                        </h5>
+                        <p class="text-muted mb-3">
+                            {{ _('directory_info') }}
+                        </p>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            <strong>{{ _('tip') }}:</strong> {{ _('directory_tip') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Features Section -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <h3 class="text-center mb-4">{{ _('how_it_works') }}</h3>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="feature-box">
+                    <i class="fas fa-paste"></i>
+                    <h5>1. {{ _('paste_url') }}</h5>
+                    <p>{{ _('paste_url_desc') }}</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="feature-box">
+                    <i class="fas fa-sliders-h"></i>
+                    <h5>2. {{ _('choose_options') }}</h5>
+                    <p>{{ _('choose_options_desc') }}</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="feature-box">
+                    <i class="fas fa-download"></i>
+                    <h5>3. {{ _('download') }}</h5>
+                    <p>{{ _('download_desc') }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Feature Highlights -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <h3 class="text-center mb-4">{{ _('what_you_can_download') }}</h3>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-video fa-3x text-primary mb-3"></i>
+                        <h5 class="card-title">{{ _('videos') }}</h5>
+                        <p class="card-text">{{ _('videos_desc') }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-music fa-3x text-success mb-3"></i>
+                        <h5 class="card-title">{{ _('audio') }}</h5>
+                        <p class="card-text">{{ _('audio_desc') }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-file-alt fa-3x text-info mb-3"></i>
+                        <h5 class="card-title">{{ _('transcripts') }}</h5>
+                        <p class="card-text">{{ _('transcripts_desc') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Directory Browser Modal -->
+<div class="modal fade" id="directoryBrowserModal" tabindex="-1" aria-labelledby="directoryBrowserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="directoryBrowserModalLabel">
+                    <i class="fas fa-folder-open me-2"></i>Select Directory
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="directory-path mb-3">
+                    <i class="fas fa-folder me-2"></i>
+                    <span id="current_path">/</span>
+                </div>
+                <div class="directory-browser" id="directory_list">
+                    <!-- Directory list will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="select_directory_btn">
+                    <i class="fas fa-check me-2"></i>Select This Directory
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Directory settings management
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if disclaimer was already accepted
+    const disclaimerAccepted = localStorage.getItem('disclaimerAccepted');
+    const disclaimerNotice = document.getElementById('disclaimer-notice');
+    
+    if (disclaimerAccepted === 'true' && disclaimerNotice) {
+        disclaimerNotice.style.display = 'none';
+    }
+    
+    // Handle form submissions with immediate feedback
+    const singleForm = document.getElementById('singleDownloadForm');
+    const batchForm = document.getElementById('batchDownloadForm');
+    const singleSubmitBtn = document.getElementById('single-submit-btn');
+    const batchSubmitBtn = document.getElementById('batch-submit-btn');
+    
+    // Single form submission
+    if (singleForm) {
+        singleForm.addEventListener('submit', function(e) {
+            // Immediately disable button and show loading
+            singleSubmitBtn.disabled = true;
+            singleSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+            
+            // Validate URL
+            const urlInput = document.querySelector('#single input[name="url"]');
+            if (!urlInput.value.trim()) {
+                e.preventDefault();
+                singleSubmitBtn.disabled = false;
+                singleSubmitBtn.innerHTML = '<i class="fas fa-arrow-right me-2"></i>' + (window.translations ? window.translations.continue : 'Continue');
+                urlInput.focus();
+                return false;
+            }
+            
+            // Form is valid, continue
+            return true;
+        });
+    }
+    
+    // Batch form submission
+    if (batchForm) {
+        batchForm.addEventListener('submit', function(e) {
+            // Immediately disable button and show loading
+            batchSubmitBtn.disabled = true;
+            batchSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+            
+            // Validate URLs
+            const urlsTextarea = document.querySelector('#batch textarea[name="urls"]');
+            if (!urlsTextarea.value.trim()) {
+                e.preventDefault();
+                batchSubmitBtn.disabled = false;
+                batchSubmitBtn.innerHTML = '<i class="fas fa-arrow-right me-2"></i>' + (window.translations ? window.translations.continue : 'Continue');
+                urlsTextarea.focus();
+                return false;
+            }
+            
+            // Form is valid, continue
+            return true;
+        });
+    }
+    
+    // Reset buttons when navigating back
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            // Page was loaded from cache (back button)
+            if (singleSubmitBtn) {
+                singleSubmitBtn.disabled = false;
+                singleSubmitBtn.innerHTML = '<i class="fas fa-arrow-right me-2"></i>' + (window.translations ? window.translations.continue : 'Continue');
+            }
+            if (batchSubmitBtn) {
+                batchSubmitBtn.disabled = false;
+                batchSubmitBtn.innerHTML = '<i class="fas fa-arrow-right me-2"></i>' + (window.translations ? window.translations.continue : 'Continue');
+            }
+        }
+    });
+    const useSystemRadio = document.getElementById('use_system');
+    const useCustomRadio = document.getElementById('use_custom');
+    const customDirSection = document.getElementById('custom_directory_section');
+    const customDirInput = document.getElementById('custom_dir_input');
+    const saveSettingsBtn = document.getElementById('save_settings_btn');
+    const settingsSavedMsg = document.getElementById('settings_saved_msg');
+    
+    // Load saved settings
+    const savedDirType = localStorage.getItem('directory_type') || 'system';
+    const savedCustomDir = localStorage.getItem('custom_directory') || '';
+    const autoOpenEnabled = localStorage.getItem('autoOpenDownloads') !== 'false';
+    
+    // Set auto-open checkbox
+    const autoOpenCheckbox = document.getElementById('auto_open_downloads');
+    if (autoOpenCheckbox) {
+        autoOpenCheckbox.checked = autoOpenEnabled;
+    }
+    
+    if (savedDirType === 'custom') {
+        useCustomRadio.checked = true;
+        customDirSection.style.display = 'block';
+        customDirInput.value = savedCustomDir;
+    }
+    
+    // Function to update the open folder button text
+    function updateOpenFolderButtonText() {
+        const dirType = document.querySelector('input[name="directory_type"]:checked').value;
+        const openFolderBtn = document.getElementById('open-folder-button');
+        const openFolderText = document.getElementById('open-folder-text');
+        
+        if (openFolderBtn && openFolderText) {
+            if (dirType === 'system') {
+                openFolderText.textContent = window.translations ? window.translations.open_system_folder || 'Open System Downloads' : 'Open System Downloads';
+            } else {
+                const customDir = customDirInput.value;
+                if (customDir) {
+                    // Show shortened path in button
+                    const pathParts = customDir.split(/[\\\/]/);
+                    const shortPath = pathParts.length > 2 ? '.../' + pathParts.slice(-2).join('/') : customDir;
+                    openFolderText.textContent = `Open: ${shortPath}`;
+                } else {
+                    openFolderText.textContent = window.translations ? window.translations.open_custom_folder || 'Select Custom Folder' : 'Select Custom Folder';
+                }
+            }
+        }
+    }
+    
+    // Update button text when radio buttons change
+    useSystemRadio.addEventListener('change', function() {
+        if (this.checked) {
+            customDirSection.style.display = 'none';
+            updateOpenFolderButtonText();
+        }
+    });
+    
+    useCustomRadio.addEventListener('change', function() {
+        if (this.checked) {
+            customDirSection.style.display = 'block';
+            updateOpenFolderButtonText();
+        }
+    });
+    
+    // Update button text when custom directory input changes
+    customDirInput.addEventListener('input', updateOpenFolderButtonText);
+    
+    // Initial button text update
+    updateOpenFolderButtonText();
+    
+    // Save settings
+    saveSettingsBtn.addEventListener('click', function() {
+        const dirType = document.querySelector('input[name="directory_type"]:checked').value;
+        const customDir = customDirInput.value;
+        
+        localStorage.setItem('directory_type', dirType);
+        localStorage.setItem('custom_directory', customDir);
+        
+        // Update hidden form fields
+        updateFormFields(dirType, customDir);
+        
+        // Show saved message
+        // Save auto-open preference
+        const autoOpenCheckbox = document.getElementById('auto_open_downloads');
+        localStorage.setItem('autoOpenDownloads', autoOpenCheckbox.checked);
+        
+        // Update button text after saving
+        updateOpenFolderButtonText();
+        
+        settingsSavedMsg.style.display = 'inline';
+        setTimeout(() => {
+            settingsSavedMsg.style.display = 'none';
+        }, 3000);
+    });
+    
+    // Update form fields based on settings
+    function updateFormFields(dirType, customDir) {
+        // Update single form
+        document.getElementById('single_use_system_dir').value = dirType;
+        document.getElementById('single_download_dir').value = customDir;
+        
+        // Update batch form
+        document.getElementById('batch_use_system_dir').value = dirType;
+        document.getElementById('batch_download_dir').value = customDir;
+    }
+    
+    // Update button text when settings tab is shown
+    document.getElementById('settings-tab').addEventListener('shown.bs.tab', function() {
+        updateOpenFolderButtonText();
+    });
+    
+    // Initialize form fields with saved settings
+    updateFormFields(savedDirType, savedCustomDir);
+    
+    // Load quick access directories
+    loadQuickAccessDirs();
+    
+    // Directory browser functionality
+    let currentPath = '/';
+    const directoryList = document.getElementById('directory_list');
+    const currentPathSpan = document.getElementById('current_path');
+    const selectDirBtn = document.getElementById('select_directory_btn');
+    
+    // Load directories when modal opens
+    document.getElementById('directoryBrowserModal').addEventListener('show.bs.modal', function() {
+        loadDirectories(currentPath);
+    });
+    
+    // Select directory button
+    selectDirBtn.addEventListener('click', function() {
+        customDirInput.value = currentPath;
+        updateOpenFolderButtonText();
+        bootstrap.Modal.getInstance(document.getElementById('directoryBrowserModal')).hide();
+    });
+    
+    // Load directories function
+    function loadDirectories(path) {
+        currentPath = path;
+        currentPathSpan.textContent = path;
+        
+        // Simulate directory loading (in real app, this would be an AJAX call)
+        const dirs = [
+            { name: '..', path: getParentPath(path), isParent: true },
+            { name: 'Downloads', path: path + '/Downloads' },
+            { name: 'Documents', path: path + '/Documents' },
+            { name: 'Desktop', path: path + '/Desktop' },
+            { name: 'Videos', path: path + '/Videos' },
+            { name: 'Music', path: path + '/Music' }
+        ];
+        
+        directoryList.innerHTML = '';
+        dirs.forEach(dir => {
+            const item = document.createElement('div');
+            item.className = 'directory-item';
+            item.innerHTML = `
+                <i class="fas fa-folder${dir.isParent ? '-open' : ''} me-2"></i>
+                ${dir.name}
+            `;
+            item.addEventListener('click', () => loadDirectories(dir.path));
+            directoryList.appendChild(item);
+        });
+    }
+    
+    function getParentPath(path) {
+        const parts = path.split('/').filter(p => p);
+        parts.pop();
+        return '/' + parts.join('/');
+    }
+    
+    // Load quick access directories
+    function loadQuickAccessDirs() {
+        const quickAccessDiv = document.getElementById('quick_access_dirs');
+        const commonDirs = [
+            { name: 'Downloads', icon: 'download', path: '~/Downloads' },
+            { name: 'Desktop', icon: 'desktop', path: '~/Desktop' },
+            { name: 'Documents', icon: 'file-alt', path: '~/Documents' },
+            { name: 'Videos', icon: 'video', path: '~/Videos' },
+            { name: 'Music', icon: 'music', path: '~/Music' },
+            { name: 'External Drive', icon: 'hdd', path: '/Volumes/External' }
+        ];
+        
+        quickAccessDiv.innerHTML = '';
+        commonDirs.forEach(dir => {
+            const col = document.createElement('div');
+            col.className = 'col-6 col-md-4';
+            col.innerHTML = `
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100 quick-access-btn" data-path="${dir.path}">
+                    <i class="fas fa-${dir.icon} me-1"></i>${dir.name}
+                </button>
+            `;
+            quickAccessDiv.appendChild(col);
+        });
+        
+        // Add click handlers to quick access buttons
+        document.querySelectorAll('.quick-access-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const path = this.getAttribute('data-path');
+                customDirInput.value = path;
+                updateOpenFolderButtonText();
+            });
+        });
+    }
+    
+    // Open current download folder
+    window.openCurrentDownloadFolder = async function() {
+        try {
+            // Get current settings
+            const dirType = document.querySelector('input[name="directory_type"]:checked').value;
+            const customDir = document.getElementById('custom_dir_input').value;
+            
+            // Check if custom is selected but no directory is specified
+            if (dirType === 'custom' && !customDir) {
+                alert('Please select a custom directory first.');
+                return;
+            }
+            
+            // Prepare request data
+            const requestData = {
+                directory_type: dirType,
+                custom_directory: customDir
+            };
+            
+            const response = await fetch('/open_download_folder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                // Show success feedback
+                const btn = event.target.closest('button');
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check me-2"></i>Opened!';
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-success');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-primary');
+                }, 2000);
+            } else if (data.status === 'warning') {
+                alert(data.message);
+            } else {
+                alert('Could not open folder: ' + data.message);
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    };
+});
+
+// Accept disclaimer function
+function acceptDisclaimer() {
+    const disclaimerNotice = document.getElementById('disclaimer-notice');
+    if (disclaimerNotice) {
+        // Fade out animation
+        disclaimerNotice.style.transition = 'opacity 0.5s ease';
+        disclaimerNotice.style.opacity = '0';
+        
+        setTimeout(() => {
+            disclaimerNotice.style.display = 'none';
+        }, 500);
+        
+        // Save acceptance in localStorage
+        localStorage.setItem('disclaimerAccepted', 'true');
+    }
+}
+</script>
+{% endblock %}
